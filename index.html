@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オセロゲーム</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="page-header">
+        <h1>オセロゲーム</h1>
+        <button id="restart-button" type="button">リスタート</button>
+    </header>
+
+    <main class="game-wrapper">
+        <section class="board-section">
+            <div id="board" class="board" aria-label="オセロの盤面"></div>
+        </section>
+
+        <aside class="sidebar" aria-live="polite">
+            <div class="status">
+                <p><span class="label">現在の手番:</span> <span id="current-player" class="player-label player-black">黒</span></p>
+                <p><span class="label">黒の枚数:</span> <span id="black-count">2</span></p>
+                <p><span class="label">白の枚数:</span> <span id="white-count">2</span></p>
+            </div>
+            <div id="message" class="message" role="status"></div>
+            <section class="history" aria-live="polite">
+                <h2>手番ログ</h2>
+                <ol id="move-log" class="move-log"></ol>
+            </section>
+        </aside>
+    </main>
+
+    <footer class="page-footer">
+        <p>駒をクリックして合法手を打つと、挟んだ駒が自動で反転します。</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
