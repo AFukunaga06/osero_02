@@ -3,6 +3,10 @@ const EMPTY = 0;
 const BLACK = 1;
 const WHITE = -1;
 
+const HUMAN_PLAYER = BLACK;
+const COMPUTER_PLAYER = WHITE;
+const COMPUTER_MOVE_DELAY_MS = 600;
+
 let board = [];
 let gameOver = false;
 let currentPlayer = BLACK;
@@ -59,47 +63,26 @@ function resetGame() {
     logStatus('ゲーム開始: 黒の番です。');
 
     updateBoardUI();
-    setMessage('黒からスタートします。ハイライトされたマスに駒を置いてください。');
+    setMessage(`${playerRoleName(HUMAN_PLAYER)}からスタートします。ハイライトされたマスに駒を置いてください。`);
 }
 
 function handleSquareClick(event) {
-    if (gameOver) {
+    if (gameOver || currentPlayer !== HUMAN_PLAYER) {
         return;
     }
 
     const row = Number(event.currentTarget.dataset.row);
     const col = Number(event.currentTarget.dataset.col);
-    const flippable = getFlippableTiles(row, col, currentPlayer);
-
-    if (flippable.length === 0) {
+    if (!applyMove(row, col, HUMAN_PLAYER)) {
         if (validMoves.length > 0) {
             setMessage('そこには置けません。ハイライトされたマスを選んでください。');
         }
         return;
     }
 
-    placeDisc(row, col, currentPlayer, flippable);
-
-    const nextPlayer = opposite(currentPlayer);
-    const nextPlayerMoves = getValidMoves(nextPlayer);
-
-    if (nextPlayerMoves.length === 0) {
-        const currentPlayerMoves = getValidMoves(currentPlayer);
-        if (currentPlayerMoves.length === 0) {
-            finishGame();
-            return;
-        }
-        validMoves = currentPlayerMoves;
-        setMessage(`${playerName(nextPlayer)}は打てる場所がないためパス。${playerName(currentPlayer)}の番が続きます。`);
-        logStatus(`${playerName(nextPlayer)}は打てる場所がないためパス。${playerName(currentPlayer)}が続けて打ちます。`);
-        updateBoardUI();
-        return;
+    if (!gameOver && currentPlayer === COMPUTER_PLAYER) {
+        setTimeout(handleComputerTurn, COMPUTER_MOVE_DELAY_MS);
     }
-
-    currentPlayer = nextPlayer;
-    validMoves = nextPlayerMoves;
-    setMessage(`${playerName(opposite(currentPlayer))}が${toCoordinateNotation(row, col)}に置きました。${playerName(currentPlayer)}の番です。`);
-    updateBoardUI();
 }
 
 function placeDisc(row, col, player, flippableTiles) {
@@ -180,7 +163,7 @@ function updateStatusPanel() {
     whiteCountElement.textContent = String(counts.white);
 
     if (!gameOver) {
-        currentPlayerElement.textContent = playerName(currentPlayer);
+        currentPlayerElement.textContent = playerRoleName(currentPlayer);
         currentPlayerElement.className = `player-label ${currentPlayer === BLACK ? 'player-black' : 'player-white'}`;
     }
 }
@@ -271,6 +254,10 @@ function playerName(player) {
     return player === BLACK ? '黒' : '白';
 }
 
+function playerRoleName(player) {
+    return player === HUMAN_PLAYER ? '黒（あなた）' : '白（コンピュータ）';
+}
+
 function toCoordinateNotation(row, col) {
     const columnLetter = String.fromCharCode('A'.charCodeAt(0) + col);
     return `${columnLetter}${row + 1}`;
@@ -310,4 +297,94 @@ function appendLogItem(item) {
 
 function clearMoveLog() {
     moveLogElement.innerHTML = '';
+}
+
+function applyMove(row, col, player) {
+    const flippable = getFlippableTiles(row, col, player);
+    if (flippable.length === 0) {
+        return false;
+    }
+
+    placeDisc(row, col, player, flippable);
+
+    const nextPlayer = opposite(player);
+    const nextPlayerMoves = getValidMoves(nextPlayer);
+
+    if (nextPlayerMoves.length === 0) {
+        const playerMoves = getValidMoves(player);
+        if (playerMoves.length === 0) {
+            finishGame();
+            return true;
+        }
+
+        currentPlayer = player;
+        validMoves = playerMoves;
+        setMessage(`${playerRoleName(nextPlayer)}は打てる場所がないためパス。${playerRoleName(player)}の番が続きます。`);
+        logStatus(`${playerRoleName(nextPlayer)}は打てる場所がないためパス。${playerRoleName(player)}が続けて打ちます。`);
+        updateBoardUI();
+        return true;
+    }
+
+    currentPlayer = nextPlayer;
+    validMoves = nextPlayerMoves;
+    setMessage(`${playerRoleName(player)}が${toCoordinateNotation(row, col)}に置きました。${playerRoleName(currentPlayer)}の番です。`);
+    updateBoardUI();
+    return true;
+}
+
+function handleComputerTurn() {
+    if (gameOver || currentPlayer !== COMPUTER_PLAYER) {
+        return;
+    }
+
+    if (validMoves.length === 0) {
+        const humanMoves = getValidMoves(HUMAN_PLAYER);
+        if (humanMoves.length === 0) {
+            finishGame();
+            return;
+        }
+
+        currentPlayer = HUMAN_PLAYER;
+        validMoves = humanMoves;
+        setMessage(`${playerRoleName(COMPUTER_PLAYER)}は打てる場所がないためパス。${playerRoleName(HUMAN_PLAYER)}の番です。`);
+        logStatus(`${playerRoleName(COMPUTER_PLAYER)}は打てる場所がないためパス。${playerRoleName(HUMAN_PLAYER)}が打ちます。`);
+        updateBoardUI();
+        return;
+    }
+
+    const { row, col } = chooseComputerMove(validMoves);
+    applyMove(row, col, COMPUTER_PLAYER);
+
+    if (!gameOver && currentPlayer === COMPUTER_PLAYER) {
+        setTimeout(handleComputerTurn, COMPUTER_MOVE_DELAY_MS);
+    }
+}
+
+function chooseComputerMove(moves) {
+    const cornerMoves = moves.filter(({ row, col }) => isCorner(row, col));
+    if (cornerMoves.length > 0) {
+        return randomChoice(cornerMoves);
+    }
+
+    const edgeMoves = moves.filter(({ row, col }) => isEdge(row, col));
+    if (edgeMoves.length > 0) {
+        return randomChoice(edgeMoves);
+    }
+
+    return randomChoice(moves);
+}
+
+function isCorner(row, col) {
+    const lastIndex = BOARD_SIZE - 1;
+    return (row === 0 || row === lastIndex) && (col === 0 || col === lastIndex);
+}
+
+function isEdge(row, col) {
+    const lastIndex = BOARD_SIZE - 1;
+    return row === 0 || row === lastIndex || col === 0 || col === lastIndex;
+}
+
+function randomChoice(options) {
+    const index = Math.floor(Math.random() * options.length);
+    return options[index];
 }
