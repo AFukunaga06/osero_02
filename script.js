@@ -7,12 +7,20 @@ const HUMAN_PLAYER = BLACK;
 const COMPUTER_PLAYER = WHITE;
 const COMPUTER_MOVE_DELAY_MS = 600;
 
+const MODE_HUMAN_VS_PC = 'human-vs-pc';
+const MODE_HUMAN_VS_HUMAN = 'human-vs-human';
+const MODE_LABELS = {
+    [MODE_HUMAN_VS_PC]: '人間 vs PC',
+    [MODE_HUMAN_VS_HUMAN]: '人間 vs 人間',
+};
+
 let board = [];
 let gameOver = false;
 let currentPlayer = BLACK;
 let validMoves = [];
 let lastMove = null;
 let moveNumber = 0;
+let gameMode = MODE_HUMAN_VS_PC;
 
 const boardElement = document.getElementById('board');
 const messageElement = document.getElementById('message');
@@ -21,11 +29,15 @@ const blackCountElement = document.getElementById('black-count');
 const whiteCountElement = document.getElementById('white-count');
 const restartButton = document.getElementById('restart-button');
 const moveLogElement = document.getElementById('move-log');
+const modeToggleButton = document.getElementById('mode-toggle-button');
 
 const squareElements = Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(null));
 
 createBoardSquares();
-restartButton.addEventListener('click', resetGame);
+restartButton.addEventListener('click', () => resetGame());
+if (modeToggleButton) {
+    modeToggleButton.addEventListener('click', toggleGameMode);
+}
 resetGame();
 
 function createBoardSquares() {
@@ -46,7 +58,9 @@ function createBoardSquares() {
     }
 }
 
-function resetGame() {
+function resetGame(options = {}) {
+    const { announceModeChange = false } = options;
+
     board = Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(EMPTY));
     const center = BOARD_SIZE / 2;
     board[center - 1][center - 1] = WHITE;
@@ -59,30 +73,72 @@ function resetGame() {
     lastMove = null;
     validMoves = getValidMoves(currentPlayer);
     moveNumber = 0;
+    updateModeToggleButton();
     clearMoveLog();
-    logStatus('ゲーム開始: 黒の番です。');
+    if (announceModeChange) {
+        logStatus(`モードを${MODE_LABELS[gameMode]}に切り替えました。`);
+    }
+    logStatus(`ゲーム開始: ${playerRoleName(currentPlayer)}の番です。`);
 
     updateBoardUI();
-    setMessage(`${playerRoleName(HUMAN_PLAYER)}からスタートします。ハイライトされたマスに駒を置いてください。`);
+    setMessage(getModeIntroMessage());
 }
 
 function handleSquareClick(event) {
-    if (gameOver || currentPlayer !== HUMAN_PLAYER) {
+    if (gameOver || !isHumanPlayer(currentPlayer)) {
         return;
     }
 
     const row = Number(event.currentTarget.dataset.row);
     const col = Number(event.currentTarget.dataset.col);
-    if (!applyMove(row, col, HUMAN_PLAYER)) {
+    if (!applyMove(row, col, currentPlayer)) {
         if (validMoves.length > 0) {
             setMessage('そこには置けません。ハイライトされたマスを選んでください。');
         }
         return;
     }
 
-    if (!gameOver && currentPlayer === COMPUTER_PLAYER) {
+    if (!gameOver && isComputerPlayer(currentPlayer)) {
         setTimeout(handleComputerTurn, COMPUTER_MOVE_DELAY_MS);
     }
+}
+
+function toggleGameMode() {
+    gameMode = gameMode === MODE_HUMAN_VS_PC ? MODE_HUMAN_VS_HUMAN : MODE_HUMAN_VS_PC;
+    resetGame({ announceModeChange: true });
+}
+
+function updateModeToggleButton() {
+    if (!modeToggleButton) {
+        return;
+    }
+
+    modeToggleButton.textContent = `モード: ${modeDisplayName()}`;
+    const isHumanVsHuman = gameMode === MODE_HUMAN_VS_HUMAN;
+    modeToggleButton.setAttribute('aria-pressed', String(isHumanVsHuman));
+}
+
+function modeDisplayName() {
+    return MODE_LABELS[gameMode];
+}
+
+function getModeIntroMessage() {
+    const instruction = 'ハイライトされたマスに駒を置いてください。';
+    if (gameMode === MODE_HUMAN_VS_PC) {
+        return `人間 vs PC モードです。${playerRoleName(BLACK)}からスタートします。${instruction}`;
+    }
+    return `人間 vs 人間 モードです。${playerRoleName(BLACK)}からスタートします。${instruction}`;
+}
+
+function isHumanPlayer(player) {
+    if (gameMode === MODE_HUMAN_VS_PC) {
+        return player === HUMAN_PLAYER;
+    }
+    return true;
+}
+
+function isComputerPlayer(player) {
+    return gameMode === MODE_HUMAN_VS_PC && player === COMPUTER_PLAYER;
 }
 
 function placeDisc(row, col, player, flippableTiles) {
@@ -255,7 +311,10 @@ function playerName(player) {
 }
 
 function playerRoleName(player) {
-    return player === HUMAN_PLAYER ? '黒（あなた）' : '白（コンピュータ）';
+    if (gameMode === MODE_HUMAN_VS_PC) {
+        return player === BLACK ? '黒（あなた）' : '白（コンピュータ）';
+    }
+    return player === BLACK ? '黒（プレイヤー1）' : '白（プレイヤー2）';
 }
 
 function toCoordinateNotation(row, col) {
@@ -333,29 +392,32 @@ function applyMove(row, col, player) {
 }
 
 function handleComputerTurn() {
-    if (gameOver || currentPlayer !== COMPUTER_PLAYER) {
+    if (gameOver || !isComputerPlayer(currentPlayer)) {
         return;
     }
 
+    const computerPlayer = currentPlayer;
+    const humanPlayer = opposite(computerPlayer);
+
     if (validMoves.length === 0) {
-        const humanMoves = getValidMoves(HUMAN_PLAYER);
+        const humanMoves = getValidMoves(humanPlayer);
         if (humanMoves.length === 0) {
             finishGame();
             return;
         }
 
-        currentPlayer = HUMAN_PLAYER;
+        currentPlayer = humanPlayer;
         validMoves = humanMoves;
-        setMessage(`${playerRoleName(COMPUTER_PLAYER)}は打てる場所がないためパス。${playerRoleName(HUMAN_PLAYER)}の番です。`);
-        logStatus(`${playerRoleName(COMPUTER_PLAYER)}は打てる場所がないためパス。${playerRoleName(HUMAN_PLAYER)}が打ちます。`);
+        setMessage(`${playerRoleName(computerPlayer)}は打てる場所がないためパス。${playerRoleName(humanPlayer)}の番です。`);
+        logStatus(`${playerRoleName(computerPlayer)}は打てる場所がないためパス。${playerRoleName(humanPlayer)}が打ちます。`);
         updateBoardUI();
         return;
     }
 
     const { row, col } = chooseComputerMove(validMoves);
-    applyMove(row, col, COMPUTER_PLAYER);
+    applyMove(row, col, computerPlayer);
 
-    if (!gameOver && currentPlayer === COMPUTER_PLAYER) {
+    if (!gameOver && isComputerPlayer(currentPlayer)) {
         setTimeout(handleComputerTurn, COMPUTER_MOVE_DELAY_MS);
     }
 }

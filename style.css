@@ -45,6 +45,14 @@ body {
     font-size: clamp(1.5rem, 2.5vw, 2rem);
 }
 
+.controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
 #restart-button {
     background: var(--accent);
     color: #fff;
@@ -61,6 +69,29 @@ body {
 #restart-button:focus {
     transform: translateY(-1px);
     box-shadow: 0 12px 24px rgba(0, 102, 255, 0.35);
+}
+
+#mode-toggle-button {
+    background: transparent;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    border-radius: 999px;
+    padding: 9px 18px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+#mode-toggle-button:hover,
+#mode-toggle-button:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(0, 102, 255, 0.25);
+}
+
+#mode-toggle-button[aria-pressed="true"] {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 10px 20px rgba(0, 102, 255, 0.3);
 }
 
 .game-wrapper {

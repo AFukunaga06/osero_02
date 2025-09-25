@@ -9,7 +9,10 @@
 <body>
     <header class="page-header">
         <h1>オセロゲーム</h1>
-        <button id="restart-button" type="button">リスタート</button>
+        <div class="controls" role="group" aria-label="ゲーム操作">
+            <button id="mode-toggle-button" type="button" aria-pressed="false">モード: 人間 vs PC</button>
+            <button id="restart-button" type="button">リスタート</button>
+        </div>
     </header>
 
     <main class="game-wrapper">
